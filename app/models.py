@@ -1,8 +1,10 @@
 from app import db
 
-
+from flask import current_app
 registrations=db.Table('registrations',db.Column('user_id',db.Integer,db.ForeignKey('users.id')),db.Column('cult_id',db.Integer,db.ForeignKey('cults.id')))
 from werkzeug.security import generate_password_hash,check_password_hash
+from itsdangerous import URLSafeTimedSerializer,SignatureExpired,Serializer
+
 
 class User(db.Model):
     __tablename__='users'
@@ -28,6 +30,21 @@ class User(db.Model):
     user_founder_cult= db.relationship('Cult',backref='founder',uselist=False)
     user_enroll_cults=db.relationship('Cult',secondary=registrations,backref=db.backref('enrolled_users',lazy='dynamic'),lazy='dynamic')
     user_given_ratings=db.relationship('Rating',backref='users',lazy='dynamic')
+    user_email_verified=db.Column(db.Boolean)
+    password_hash=db.Column(db.Unicode)
+    def generate_auth_token(self, expiration):
+        s = token_serializer=URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+        return token_serializer.dumps(self.id,salt='email-confirmation')
+    
+    @staticmethod
+    def verify_auth_token(token):
+        s = token_serializer=URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token,salt='email-confirmation',max_age=1000)
+        except:
+            return None
+        print(data)
+        return User.query.get(int(data))
     
     def give_rating(self,cultid,rate):
         rating=Rating(user_id=self.id,cult_id=cultid,rating=rate)
@@ -95,5 +112,5 @@ class Rating(db.Model):
     def __repr__(self):
         return "this is RATING() FROM USER{} TO CULT{} ".format(self.rating,self.user_id,self.cult_id)    
     
-#new_user=User(user_name='Kailash',user_landmark='parashar k bada', user_city= 'Gwalior', user_state='Madhy_Pradesh', user_Country='India', user_pincode= 474001, user_lat= 23.23, user_long=22.9, user_intrested_field1='product_development', user_intrested_field2 = 'technology', user_intrested_field3 = 'singing', user_intrested_field4='Cooking', user_social_profile_url= 'https://www.linkedin.com/in/kuldeep-parashar-5aa9a212a/', user_email_adrs= 'kparashar172@gmail.com', user_password= 'kido#123456', user_organisation_name= 'Amity University')
+#new_user2=User(user_name='triyambhkam',user_landmark='parashar k bada', user_city= 'Gwalior', user_state='Uttranchal', user_Country='India', user_pincode= 474321, user_lat= 23.23, user_long=23.09, user_intrested_field1='product_development', user_intrested_field2 = 'technology', user_intrested_field3 = 'singing', user_intrested_field4='Cooking', user_social_profile_url= 'https://www.linkedin.com/in/kuldeep-parashar-5aa9a212a/', user_email_adrs= 'kparashar17290@gmail.com', user_password= 'kido#123456', user_organisation_name= 'Amity University')
 
