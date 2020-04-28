@@ -6,7 +6,7 @@ import psycopg2
 from app import db
 from app.emails import send_email
 from app.models import User
-from itsdangerous import URLSafeTimedSerializer,SignatureExpired,Serializer
+from itsdangerous import URLSafeTimedSerializer,SignatureExpired
 
 token_serializer=URLSafeTimedSerializer("the secret key is here")
 
@@ -39,7 +39,7 @@ def email_token_varify(token):
     db.session.commit()
     return '<h1>susscess!! you are verifiled user now{}</h1>'.format(usr.user_name)
 
-@main.route('/user/<int:id>')
+@main.route('/user/')
 def get_user(id):
     usr=User.query.filter_by(id=id).first()
     user_data={}

@@ -1,6 +1,6 @@
 from app import db
 
-from flask import current_app
+from flask import current_app,jsonify
 registrations=db.Table('registrations',db.Column('user_id',db.Integer,db.ForeignKey('users.id')),db.Column('cult_id',db.Integer,db.ForeignKey('cults.id')))
 from werkzeug.security import generate_password_hash,check_password_hash
 from itsdangerous import URLSafeTimedSerializer,SignatureExpired,Serializer
@@ -29,7 +29,7 @@ class User(db.Model):
     user_image=db.Column(db.LargeBinary)
     user_founder_cult= db.relationship('Cult',backref='founder',uselist=False)
     user_enroll_cults=db.relationship('Cult',secondary=registrations,backref=db.backref('enrolled_users',lazy='dynamic'),lazy='dynamic')
-    user_given_ratings=db.relationship('Rating',backref='users',lazy='dynamic')
+    user_given_ratings=db.relationship('Rating',backref='users',lazy='immediate')
     user_email_verified=db.Column(db.Boolean)
     password_hash=db.Column(db.Unicode)
     def generate_auth_token(self, expiration):
@@ -46,6 +46,18 @@ class User(db.Model):
         print(data)
         return User.query.get(int(data))
     
+    #register new user 
+    @staticmethod
+    def register_user(data):
+        new_user=User(user_name=data.get('user_name'),user_landmark=data.get('user_landmark'), user_city= data.get('user_city'), user_state=data.get('user_sate'), user_Country=data.get('user_Country'), user_pincode=data.get('user_pincode'), user_lat=data.get('user_lat'), user_long=data.get('user_long'), user_intrested_field1=data.get('user_intrested_field1'), user_intrested_field2 = data.get('user_intrested_field2'), user_intrested_field3 = data.get('user_intrested_field3'), user_intrested_field4=data.get('user_intrested_field4'), user_social_profile_url= data.get('user_social_profile_url'), user_email_adrs= data.get('user_email_adrs'), user_password= data.get('user_password'), user_organisation_name=data.get('user_organisation_name'))
+        db.session.add(new_user)
+        db.session.commit()
+        return new_user
+        
+    def user_profile(self):
+        return {"user_name":self.user_name}
+        
+        
     def give_rating(self,cultid,rate):
         rating=Rating(user_id=self.id,cult_id=cultid,rating=rate)
         db.session.add(rating)
@@ -85,11 +97,32 @@ class Cult(db.Model):
     cult_quote_line=db.Column(db.UnicodeText)
     cult_image=db.Column(db.LargeBinary)
     cult_rating=db.Column(db.SmallInteger)
-    cult_posts=db.relationship('Post',backref='cult',lazy='dynamic')
-    cult_rating=db.relationship('Rating',backref='cult',lazy='dynamic')
+    cult_posts=db.relationship('Post',backref='cult',lazy='immediate')
+    cult_rating=db.relationship('Rating',backref='cult',lazy='immediate')
     
     def __repr__(self):
-        return "this is Cult : {} ".format(self.cult_name)    
+        return "this is Cult : {} ".format(self.cult_name)  
+    
+    def get_avg_rating(self):
+        tot_rating=0
+        rating_count=0
+        for rating in self.cult_rating:
+            tot_rating+=rating.rating
+            rating_count+=1
+        if rating_count==0:
+            return 0
+        return(tot_rating/rating_count)
+    
+    def get_compact_data(self):
+        return {"cult_id":self.id,"cult_name":self.cult_name,"cult_rating":self.get_avg_rating(),"cult_quote":self.cult_quote_line,"cult_work_field1":self.cult_work_field1,"cult_work_field2":self.cult_work_field2,"cult_founder_id":self.cult_founder_id}
+        #register new user 
+    
+    @staticmethod
+    def register_cult(data,FID):
+        new_cult=Cult(cult_founder_id=FID,cult_name=data.get('cult_name'),cult_landmark=data.get('cult_landmark'), cult_city= data.get('cult_city'), cult_state=data.get('cult_state'), cult_country=data.get('cult_Country'), cult_pincode=data.get('cult_pincode'), cult_lat=data.get('cult_lat'), cult_long=data.get('cult_long'), cult_work_field1=data.get('cult_work_field1'), cult_work_field2 = data.get('cult_work_field2'),cult_quote_line=data.get('cult_quote_line'))
+        db.session.add(new_cult)
+        db.session.commit()
+        return new_cult
     
 class Post(db.Model): 
     __tablename__='posts'
