@@ -1,7 +1,7 @@
 from app import db
 
 from flask import current_app,jsonify
-registrations=db.Table('registrations',db.Column('user_id',db.Integer,db.ForeignKey('users.id')),db.Column('cult_id',db.Integer,db.ForeignKey('cults.id')))
+registrations=db.Table('registrations',db.Column('user_id',db.Integer,db.ForeignKey('users.id'),primary_key=True),db.Column('cult_id',db.Integer,db.ForeignKey('cults.id'),primary_key=True))
 from werkzeug.security import generate_password_hash,check_password_hash
 from itsdangerous import URLSafeTimedSerializer,SignatureExpired,Serializer
 
@@ -116,6 +116,18 @@ class Cult(db.Model):
     def get_compact_data(self):
         return {"cult_id":self.id,"cult_name":self.cult_name,"cult_rating":self.get_avg_rating(),"cult_quote":self.cult_quote_line,"cult_work_field1":self.cult_work_field1,"cult_work_field2":self.cult_work_field2,"cult_founder_id":self.cult_founder_id}
         #register new user 
+        
+    def get_cult_data(self):
+        founder=User.query.get(self.cult_founder_id)
+        posts={}
+        post_counter=0
+        for post in self.cult_posts:
+            post_counter+=1
+            posts[post_counter]={"cult_name":self.cult_name,"post_id":post.id,"post_content":post.post_content,"post_writer":founder.user_name}
+                 
+        return {"cult_id":self.id,"cult_name":self.cult_name,"cult_rating":self.get_avg_rating(),"cult_quote":self.cult_quote_line,"cult_work_field1":self.cult_work_field1,"cult_work_field2":self.cult_work_field2,"cult_founder_id":self.cult_founder_id,"cult_founder_name":founder.user_name,"cult_city":self.cult_city,"cult_country":self.cult_country,"cult_state":self.cult_state,"cult_pincode":self.cult_pincode,"posts":posts}
+    
+
     
     @staticmethod
     def register_cult(data,FID):
@@ -131,6 +143,27 @@ class Post(db.Model):
     post_content=db.Column(db.UnicodeText)
     post_banner_image=db.Column(db.LargeBinary)
     post_application_url=db.Column(db.Unicode)
+    
+    @staticmethod
+    def post_creation(data,cult):
+        new_post=Post(cult_id=cult.id,post_content=data.get('post_content'),post_banner_image=data.get('post_banner'),post_application_url=data.get('post_application_url'))
+        db.session.add(new_post)
+        db.session.commit()
+        return new_post
+    
+    
+    #partial data exposing function of model post
+    def get_compact_data(self):
+        belong_cult=Cult.query.get(self.cult_id)
+        founder_cult=User.query.get(belong_cult.cult_founder_id)
+        return {"cult_name":belong_cult.cult_name,"post_id":self.id,"post_content":self.post_content,"post_writer":founder_cult.user_name}
+    
+    #full data exposing funcion of model post
+    def get_post_data(self):
+        belong_cult=Cult.query.get(self.cult_id)
+        founder_cult=User.query.get(belong_cult.cult_founder_id)
+        return {"cult_name":belong_cult.cult_name,"post_id":self.id,"post_content":self.post_content,"post_writer":founder_cult.user_name,"post_banner_image":self.post_banner_image,"post_application_url":self.post_application_url,"post_cult_id":self.cult_id}
+    
     
     def __repr__(self):
         return "this is post{} ".format(self.post_content)    

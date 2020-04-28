@@ -39,3 +39,21 @@ def creat_cult():
     #user_email=str(data.get("user_email_adrs"))
     #token_generate_and_send_email(user_email,new_user.user_name)
     return {"created":"true","user":new_cult.get_compact_data()},201
+
+@api.route("/cults/<int:id>",methods=['GET'])
+def get_cult_details(id):
+    cult=Cult.query.get(id)
+    return cult.get_cult_data()
+
+# endpoint for follwing of the cult
+@api.route("/cults/follow/<int:id>",methods=['PUT'])
+def follow_cult(id):
+    cult=Cult.query.get(id)
+    follower=g.current_user
+    follower.user_enroll_cults.append(cult)
+    try:
+        db.session.add(follower,cult)
+        db.session.commit()
+    except IntegrityError:
+        return {"status":"alread_following"},403
+    return {"status":"started following"},204
